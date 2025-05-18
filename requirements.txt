@@ -1,0 +1,9 @@
+opencv-python==4.9.0.80
+numpy==1.26.3
+python-dotenv==1.0.0
+boto3==1.28.62
+sounddevice==0.4.6
+scipy==1.11.4
+torch==2.6.0
+torchvision==0.21.0
+ultralytics>=8.0.0
