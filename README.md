@@ -9,7 +9,7 @@ Terra Rover is an integrated system that combines computer vision, voice recogni
 ## Features
 
 - **Real-time plant disease detection** using fine-tuned YOLO11s models
-- **Voice query interface** for asking questions about plants in view
+- **Voice and Text query interface** for asking questions about plants in view
 - **AWS integration** for cloud-based image storage and analysis
 - **Vision-Language Model support** for detailed plant analysis
 - **Optimized video processing pipeline** for high-performance operation
@@ -103,6 +103,7 @@ terra-rover-fine-tuned/
 
 2. Using the interface:
    - Press 's' to activate voice query mode
+   - Or pres 't' to input prompt into text field
    - Ask questions about plants in view when prompted
    - Press 'q' to quit the application
 
