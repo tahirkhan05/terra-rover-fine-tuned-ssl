@@ -4,6 +4,7 @@ import time
 import base64
 from io import BytesIO
 from scipy.io.wavfile import write
+import pyttsx3
 from services.aws_client import AWSClient
 from utils.logger import logger
 from config.settings import settings
@@ -15,8 +16,47 @@ class SpeechProcessor:
         self.channels = 1
         self.dtype = np.int16
         self.recording = False
+        
+        # Initialize TTS engine
+        try:
+            self.tts_engine = pyttsx3.init()
+            self.tts_engine.setProperty('rate', 150)  # Speaking rate
+            self.tts_engine.setProperty('volume', 0.8)  # Volume level
+            
+            # Set voice (prefer female voice for agricultural assistant)
+            voices = self.tts_engine.getProperty('voices')
+            for voice in voices:
+                if 'female' in voice.name.lower() or 'zira' in voice.name.lower():
+                    self.tts_engine.setProperty('voice', voice.id)
+                    break
+            
+            logger.info("TTS engine initialized successfully")
+        except Exception as e:
+            logger.error(f"TTS initialization failed: {e}")
+            self.tts_engine = None
+        
         self._verify_microphone()
-        logger.info("SpeechProcessor initialized successfully")
+        logger.info("SpeechProcessor with TTS initialized successfully")
+    
+    def speak_text(self, text):
+        """Convert text to speech"""
+        if not self.tts_engine:
+            logger.warning("TTS engine not available")
+            return False
+            
+        try:
+            # Clean text for better TTS
+            clean_text = text.replace('\n', ' ').replace('  ', ' ').strip()
+            if len(clean_text) > 500:
+                clean_text = clean_text[:500] + "... continuing analysis available on screen."
+            
+            logger.info(f"Speaking text: {clean_text[:50]}...")
+            self.tts_engine.say(clean_text)
+            self.tts_engine.runAndWait()
+            return True
+        except Exception as e:
+            logger.error(f"TTS error: {e}")
+            return False
     
     def _verify_microphone(self):
         """Microphone verification"""
@@ -30,8 +70,7 @@ class SpeechProcessor:
             if not devices[default_input]['max_input_channels'] > 0:
                 raise Exception("No input channels available on default device")
             
-            # Test recording with logging
-            logger.info("Testing microphone with short recording...")
+            logger.info("Testing microphone...")
             test_recording = sd.rec(int(0.5 * self.sample_rate), 
                                   samplerate=self.sample_rate,
                                   channels=self.channels,
@@ -42,32 +81,22 @@ class SpeechProcessor:
             logger.info(f"Test recording max amplitude: {max_amplitude}")
             
             if max_amplitude < 10:
-                logger.warning("WARNING: Microphone test recording detected very low sound levels")
-                logger.warning("Please check your microphone connection and volume settings")
+                logger.warning("WARNING: Low microphone levels detected")
             
         except Exception as e:
             logger.error(f"Microphone verification failed: {str(e)}")
-            logger.error("Voice commands will not work without a functioning microphone")
 
     def record_audio(self, duration=5):
-        """Record audio from microphone with enhanced feedback"""
+        """Record audio from microphone"""
         try:
             logger.info(f"Recording audio for {duration} seconds...")
-            print("\n🎤 Speak now... Recording for {duration} seconds".format(duration=duration))
-            
-            # Flash the console to make it obvious recording is happening
-            for _ in range(3):
-                print("Recording...", end="\r")
-                time.sleep(0.2)
-                print("           ", end="\r")
-                time.sleep(0.2)
+            print(f"\n🎤 Speak now... Recording for {duration} seconds")
             
             recording = sd.rec(int(duration * self.sample_rate),
                             samplerate=self.sample_rate,
                             channels=self.channels,
                             dtype=self.dtype)
             
-            # Visual countdown
             for i in range(duration, 0, -1):
                 print(f"Recording... {i} seconds left", end="\r")
                 time.sleep(1)
@@ -75,22 +104,18 @@ class SpeechProcessor:
             print("Processing audio...                ")
             sd.wait()  
             
-            # Check if audio was captured
             max_amplitude = np.abs(recording).max()
             logger.info(f"Recording max amplitude: {max_amplitude}")
             
             if max_amplitude < 10:
-                print("❌ No sound detected! Check your microphone.")
-                logger.warning(f"No sound detected in recording (max amplitude: {max_amplitude})")
+                print("❌ No sound detected!")
                 return None
                 
-            # Convert to WAV format
             audio_buffer = BytesIO()
             write(audio_buffer, self.sample_rate, recording)
             audio_buffer.seek(0)
             
             print("✅ Audio recording completed!")
-            logger.info("Audio recording completed successfully")
             return audio_buffer.read()
         except Exception as e:
             print("❌ Audio recording failed!")
@@ -98,57 +123,25 @@ class SpeechProcessor:
             return None
 
     def transcribe_speech(self, audio_bytes):
-        """Process audio with Amazon Lex and return transcription"""
+        """Process audio with Amazon Lex"""
         if not audio_bytes:
-            logger.error("No audio data provided for transcription")
             return None
             
         try:
-            # Check if Lex configuration is set
             if not settings.LEX_BOT_ID or not settings.LEX_BOT_ALIAS_ID:
-                logger.error("Lex configuration is missing! Check your .env file")
-                print("❌ Speech recognition not configured. Check your .env file.")
+                logger.error("Lex configuration missing")
                 return None
                 
             print("🔄 Transcribing speech...")
-            # Using the AWS client's recognize_speech method
             response = self.aws_client.recognize_speech(audio_bytes)
             
             if response:
-                # Check if response is a base64/encoded string and try to decode it
-                if isinstance(response, str) and (response.startswith("H4s") or 
-                                                "%" in response or 
-                                                "+" in response or
-                                                response.startswith("data:") or
-                                                "=" in response):
-                    logger.warning("Received possible encoded response, attempting to decode")
-                    try:
-                        # Try to decode if it's base64
-                        decoded = None
-                        try:
-                            # Try standard base64 decode first
-                            decoded = base64.b64decode(response).decode('utf-8')
-                        except:
-                            # Try url-safe base64
-                            try:
-                                decoded = base64.urlsafe_b64decode(response).decode('utf-8')
-                            except:
-                                pass
-                        
-                        if decoded:
-                            logger.info(f"Successfully decoded response: {decoded}")
-                            response = decoded
-                    except Exception as decode_error:
-                        logger.warning(f"Failed to decode response: {decode_error}")
-                
                 logger.info(f"Transcription: {response}")
                 print(f"🎙️ Transcription: {response}")
+                return response
             else:
-                logger.warning("No transcription returned from Lex")
-                print("❌ No transcription returned. Try speaking clearly.")
-            
-            return response
+                print("❌ No transcription returned")
+                return None
         except Exception as e:
             logger.error(f"Speech transcription error: {str(e)}")
-            print(f"❌ Speech transcription failed: {str(e)}")
             return None
