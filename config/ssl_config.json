@@ -1,0 +1,60 @@
+{
+    "ssl_method": "simclr",
+    "learning_rate": 0.001,
+    "weight_decay": 1e-4,
+    "batch_size": 16,
+    "buffer_size": 1000,
+    "learning_threshold": 100,
+    "confidence_threshold": 0.5,
+    "improvement_threshold": 0.1,
+    "learning_batch_size": 50,
+    "yolo_model_path": "best.pt",
+    "db_path": "ssl_learning.db",
+    "ssl_checkpoint_dir": "models/ssl_checkpoints/",
+    "augmentation_strength": 0.8,
+    "temperature": 0.5,
+    "tau": 0.99,
+    "projection_dim": 256,
+    "feature_dim": 2048,
+    "update_frequency": 10,
+    "min_learning_samples": 50,
+    "max_learning_samples": 500,
+    "clustering_threshold": 0.7,
+    "pseudo_label_confidence": 0.6,
+    "dataset_paths": [
+        "datasets/new_plant_diseases/",
+        "datasets/agriculture_crops/",
+        "datasets/crop_weed_detection/",
+        "datasets/agricultural_crops_classification/"
+    ],
+    "supported_datasets": {
+        "new_plant_diseases": {
+            "path": "datasets/new_plant_diseases/",
+            "type": "classification",
+            "classes": ["healthy", "diseased"],
+            "suitable": true,
+            "description": "Plant disease classification dataset with 38 classes"
+        },
+        "agriculture_crops": {
+            "path": "datasets/agriculture_crops/",
+            "type": "classification",
+            "classes": ["rice", "wheat", "corn", "sugarcane"],
+            "suitable": true,
+            "description": "Agricultural crop type classification"
+        },
+        "crop_weed_detection": {
+            "path": "datasets/crop_weed_detection/",
+            "type": "object_detection",
+            "classes": ["crop", "weed"],
+            "suitable": true,
+            "description": "Crop and weed detection with bounding boxes"
+        },
+        "agricultural_crops_classification": {
+            "path": "datasets/agricultural_crops_classification/",
+            "type": "classification",
+            "classes": ["multiple_crops"],
+            "suitable": true,
+            "description": "Multi-class agricultural crop classification"
+        }
+    }
+}
