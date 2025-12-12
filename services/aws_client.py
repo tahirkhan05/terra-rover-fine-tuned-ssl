@@ -107,20 +107,22 @@ class AWSClient:
             content_blocks = []
             
             if image_key:
-                # Get image bytes from S3 and base64 encode for HTTP transport
+                # Get image bytes from S3
                 response = self.s3.get_object(
                     Bucket=settings.S3_BUCKET,
                     Key=image_key
                 )
                 image_bytes = response['Body'].read()
-                base64_image = base64.b64encode(image_bytes).decode('utf-8')
                 
-                # Add image block in Converse API format with base64 data
+                # Base64 encode the image bytes for JSON serialization
+                image_base64 = base64.b64encode(image_bytes).decode('utf-8')
+                
+                # Add image block in Converse API format
                 content_blocks.append({
                     "image": {
                         "format": "jpeg",
                         "source": {
-                            "bytes": base64_image
+                            "bytes": image_base64
                         }
                     }
                 })
